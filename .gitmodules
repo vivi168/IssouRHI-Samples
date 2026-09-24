@@ -1,0 +1,9 @@
+[submodule "third_party/glfw"]
+	path = third_party/glfw
+	url = https://github.com/glfw/glfw
+[submodule "third_party/IssouRHI"]
+	path = third_party/IssouRHI
+	url = https://github.com/vivi168/IssouRHI
+[submodule "third_party/directxmath"]
+	path = third_party/directxmath
+	url = https://github.com/microsoft/directxmath

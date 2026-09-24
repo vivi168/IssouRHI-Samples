@@ -1,0 +1,36 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20
+  },
+  "configurePresets": [
+    {
+      "name": "Ninja Base",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build",
+      "hidden": true
+    },
+    {
+      "name": "Clang-Cl",
+      "displayName": "Clang (cl/Ninja)",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_C_COMPILER": "clang-cl.exe",
+        "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "BUILD_D3D12_BACKEND": "ON"
+      },
+      "inherits": ["Ninja Base"]
+    },
+    {
+      "name": "MSVC",
+      "displayName": "MSVC (Ninja)",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "BUILD_D3D12_BACKEND": "ON"
+      },
+      "inherits": ["Ninja Base"]
+    }
+  ]
+}

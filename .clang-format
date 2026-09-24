@@ -1,0 +1,8 @@
+Language:     Cpp
+BasedOnStyle: Google
+AccessModifierOffset: -2
+BreakBeforeBraces: Linux
+ColumnLimit: 0
+DerivePointerAlignment: false
+IncludeBlocks: Preserve
+SeparateDefinitionBlocks: Always
