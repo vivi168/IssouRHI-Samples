@@ -2,8 +2,6 @@
 
 #include <DirectXMath.h>
 
-struct GLFWwindow;
-
 class Camera
 {
 public:
@@ -12,13 +10,14 @@ public:
   void Target(float x, float y, float z);
   void Follow(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 offset);
   void Orient(float pitch, float yaw);
-  void ProcessKeyboard(GLFWwindow* window, float dt);
+  void Move(float right, float up, float forward);
+  void Rotate(float pitch, float yaw);
+  void RotateAndMove(float pitch, float yaw, float right, float up, float forward);
   DirectX::XMMATRIX LookAt();
   DirectX::XMFLOAT3 WorldPos() const;
 
 private:
   float m_Yaw, m_Pitch;
-  float m_Speed, m_Sensitivity;
 
   static const DirectX::XMVECTOR worldUp;
 

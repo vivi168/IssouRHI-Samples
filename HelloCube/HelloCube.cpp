@@ -1,239 +1,167 @@
-#include <IssouRHI.h>
+#include "App.h"
 #include "Camera.h"
-
-#include <algorithm>
-
-#include <cstddef>
-#include <cstdio>
-#include <cstdlib>
+#include "Helper.h"
 
 #include <array>
-#include <filesystem>
-#include <fstream>
-#include <vector>
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
+using namespace DirectX;
 
-static std::vector<std::byte> ReadData(const std::filesystem::path& file)
+class HelloCube final : public App
 {
-  std::ifstream in(file, std::ios::binary | std::ios::ate);
-  if (!in) {
-    throw std::runtime_error("Failed to open file");
-  }
+public:
+  HelloCube() : App("HelloCube") {}
 
-  std::streamsize size = in.tellg();
-  if (size < 0) {
-    throw std::runtime_error("Failed to determine file size");
-  }
-
-  std::vector<std::byte> buffer(static_cast<size_t>(size));
-
-  in.seekg(0, std::ios::beg);
-  if (!in.read(reinterpret_cast<char*>(buffer.data()), size)) {
-    throw std::runtime_error("Failed to read file");
-  }
-
-  return buffer;
-}
-
-static void ErrorCallback(int, const char* description)
-{
-  fprintf(stderr, "Error: %s\n", description);
-}
-
-static void KeyCallback(GLFWwindow* window, int key, int, int action, int)
-{
-  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-    glfwSetWindowShouldClose(window, GLFW_TRUE);
-  }
-}
-
-int main()
-{
-  // Init window
-  GLFWwindow* window;
-  glfwSetErrorCallback(ErrorCallback);
-
-  if (!glfwInit()) {
-    fprintf(stderr, "Failed to initialize GLFW\n");
-    return -1;
-  }
-
-  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-  window = glfwCreateWindow(800, 600, "HelloCube", NULL, NULL);
-  if (!window) {
-    fprintf(stderr, "Failed to create GLFW window\n");
-    glfwTerminate();
-    return -1;
-  }
-
-  glfwSetKeyCallback(window, KeyCallback);
-
-  using namespace DirectX;
-
-  // Keep GPU resources scoped inside the window lifetime.
+private:
+  void OnInit() override
   {
-    // Create Device
-    auto g_Device = IssouRHI::Device::CreateDevice(IssouRHI::Backend::D3D12, {});
+    m_SurfaceConfig.width = Width();
+    m_SurfaceConfig.height = Height();
+    Surface().Configure(m_SurfaceConfig);
 
-    // Create Surface
-    auto g_Surface = g_Device->CreateSurface(glfwGetWin32Window(window));
-    IssouRHI::SurfaceConfiguration config{
-        .format = IssouRHI::TextureFormat::RGBA8Unorm,
-        .width = 800,
-        .height = 600,
-        .bufferCount = 3,
-    };
-    g_Surface->Configure(config);
-
-    // Create Pipeline
-    const std::filesystem::path shaderDirectory = SAMPLE_SHADER_DIRECTORY;
-    auto vertexShaderBlob = ReadData(shaderDirectory / "HelloCube.vs.cso");
-    auto pixelShaderBlob = ReadData(shaderDirectory / "HelloCube.ps.cso");
-
-    auto vertexShaderLib = g_Device->CreateShaderLibrary(vertexShaderBlob);
-    auto pixelShaderLib = g_Device->CreateShaderLibrary(pixelShaderBlob);
-
-    IssouRHI::ShaderModule shaderModules[] = {
-        {.library = vertexShaderLib.get(), .stage = IssouRHI::ShaderStage::Vertex, .entryPointName = "VSMain"},
-        {.library = pixelShaderLib.get(), .stage = IssouRHI::ShaderStage::Fragment, .entryPointName = "PSMain"},
+    const std::filesystem::path shaders = SAMPLE_SHADER_DIRECTORY;
+    auto vertexData = ReadData(shaders / "HelloCube.vs.cso");
+    auto pixelData = ReadData(shaders / "HelloCube.ps.cso");
+    auto vertexShader = Device().CreateShaderLibrary(vertexData);
+    auto pixelShader = Device().CreateShaderLibrary(pixelData);
+    IssouRHI::ShaderModule modules[] = {
+        {.library = vertexShader.get(), .stage = IssouRHI::ShaderStage::Vertex, .entryPointName = "VSMain"},
+        {.library = pixelShader.get(), .stage = IssouRHI::ShaderStage::Fragment, .entryPointName = "PSMain"},
     };
 
-    IssouRHI::ColorTargetState targets[] = {{
-        .format = IssouRHI::TextureFormat::RGBA8Unorm,
-    }};
-    auto g_RenderPipeline = g_Device->CreateRenderPipeline({
+    IssouRHI::ColorTargetState targets[] = {{.format = m_SurfaceConfig.format}};
+    m_Pipeline = Device().CreateRenderPipeline({
         .label = "Cube pipeline",
-        .shaders = shaderModules,
+        .shaders = modules,
         .targets = targets,
         .depthStencil = {
             .format = IssouRHI::TextureFormat::Depth32Float,
             .depthCompare = IssouRHI::CompareFunction::Less,
             .depthWriteEnabled = true,
         },
+        .primitive = {
+              .frontFace = IssouRHI::FrontFace::CCW,
+              .cullMode = IssouRHI::CullMode::Back,
+          },
     });
 
-    std::vector<std::shared_ptr<IssouRHI::Texture>> depthTextures;
-    auto createDepthTextures = [&] {
-      depthTextures.clear();
-      for (uint32_t i = 0; i < config.bufferCount; ++i) {
-        auto texture = g_Device->CreateTexture({
-            .label = "Cube depth",
-            .size = {.width = config.width, .height = config.height},
-            .format = IssouRHI::TextureFormat::Depth32Float,
-            .usage = IssouRHI::TextureUsage::RenderAttachment,
-        });
-        depthTextures.push_back(texture);
-      }
-    };
-    createDepthTextures();
+    CreateDepthTexture();
 
-    Camera camera;
-    camera.Translate(0.0f, 0.0f, 5.0f);
-    camera.Target(0.0f, 0.0f, 0.0f);
-
-    double previousTime = glfwGetTime();
-
-    while (!glfwWindowShouldClose(window)) {
-      glfwPollEvents();
-      if (glfwWindowShouldClose(window)) break;
-      const double now = glfwGetTime();
-      const float dt = static_cast<float>(std::min(now - previousTime, 0.1));
-      previousTime = now;
-
-      int width, height;
-      glfwGetFramebufferSize(window, &width, &height);
-      if (width == 0 || height == 0) {
-        glfwWaitEvents();
-        continue;
-      }
-
-      auto queue = g_Device->GetQueue();
-      if (config.width != static_cast<uint32_t>(width) || config.height != static_cast<uint32_t>(height)) {
-        queue->WaitForAll();
-        config.width = static_cast<uint32_t>(width);
-        config.height = static_cast<uint32_t>(height);
-        g_Surface->Configure(config);
-        createDepthTextures();
-      }
-
-      camera.ProcessKeyboard(window, dt);
-      const float aspect = static_cast<float>(config.width) / static_cast<float>(config.height);
-      const XMMATRIX model = XMMatrixRotationY(static_cast<float>(now) * 0.5f) * XMMatrixRotationX(0.3f);
-      const XMMATRIX projection = XMMatrixPerspectiveFovRH(XM_PIDIV4, aspect, 0.1f, 100.0f);
-      XMFLOAT4X4 modelViewProjection;
-      XMStoreFloat4x4(&modelViewProjection, XMMatrixTranspose(model * camera.LookAt() * projection));
-
-      auto renderTarget = g_Surface->GetCurrentTexture();
-      auto renderTargetView = renderTarget->CreateView();
-      auto depthView = depthTextures[g_Surface->CurrentFrameIndex()]->CreateView();
-
-      auto encoder = queue->CreateCommandEncoder();
-
-      constexpr IssouRHI::StageAccessLayout presentState{
-          IssouRHI::PipelineStage::None,
-          IssouRHI::Access::None,
-          IssouRHI::TextureLayout::Present,
-      };
-      constexpr IssouRHI::StageAccessLayout colorAttachmentState{
-          IssouRHI::PipelineStage::ColorAttachment,
-          IssouRHI::Access::ColorAttachmentWrite,
-          IssouRHI::TextureLayout::ColorAttachment,
-      };
-
-      {
-        std::array transitions{
-            IssouRHI::TextureBarrierDesc{renderTarget.get(), presentState, colorAttachmentState},
-        };
-        encoder->Barrier({.textures = transitions});
-      }
-
-      // Record render pass
-      {
-        std::array targets{
-            IssouRHI::ColorAttachment{
-                .view = renderTargetView.get(),
-                .clearValue = {0.0f, 0.2f, 0.4f, 1.0f},
-            },
-        };
-        auto passEncoder = encoder->BeginRenderPass({
-            .label = "Cube pass",
-            .colorAttachments = targets,
-            .depthStencilAttachment = {
-                .view = depthView.get(),
-                .depthClearValue = 1.0f,
-                .stencilLoadOp = IssouRHI::LoadOp::DontCare,
-            },
-        });
-
-        passEncoder->SetPipeline(g_RenderPipeline.get());
-
-        passEncoder->Draw(modelViewProjection, 36);
-        passEncoder->End();
-      }
-
-      {
-        std::array transitions{
-            IssouRHI::TextureBarrierDesc{renderTarget.get(), colorAttachmentState, presentState},
-        };
-        encoder->Barrier({.textures = transitions});
-      }
-
-      // Submit work
-      IssouRHI::CommandBuffer* cb[] = {encoder->Finish()};
-      queue->Submit(cb);
-
-      g_Surface->Present();
-    }
-
-    g_Device->GetQueue()->WaitForAll();
+    m_Camera.Translate(0.0f, 0.0f, 5.0f);
+    m_Camera.Target(0.0f, 0.0f, 0.0f);
   }
 
-  glfwDestroyWindow(window);
-  glfwTerminate();
+  void CreateDepthTexture()
+  {
+    m_DepthTexture = Device().CreateTexture({
+        .label = "Cube depth",
+        .size = {.width = m_SurfaceConfig.width, .height = m_SurfaceConfig.height},
+        .format = IssouRHI::TextureFormat::Depth32Float,
+        .usage = IssouRHI::TextureUsage::RenderAttachment,
+    });
+  }
+
+  void OnUpdate(float dt) override
+  {
+    {
+      const auto pressed = [this](int key) {
+        return glfwGetKey(Window(), key) == GLFW_PRESS ? 1.0f : 0.0f;
+      };
+      const float moveStep = 3.0f * dt;
+      const float turnStep = 2.0f * dt;
+
+      const float pitch = pressed(GLFW_KEY_UP) - pressed(GLFW_KEY_DOWN);
+      const float yaw = pressed(GLFW_KEY_LEFT) - pressed(GLFW_KEY_RIGHT);
+      const float right = pressed(GLFW_KEY_D) - pressed(GLFW_KEY_A);
+      const float up = pressed(GLFW_KEY_E) - pressed(GLFW_KEY_Q);
+      const float forward = pressed(GLFW_KEY_W) - pressed(GLFW_KEY_S);
+
+      m_Camera.RotateAndMove(pitch * turnStep, yaw * turnStep, right * moveStep, up * moveStep, forward * moveStep);
+    }
+
+    const XMMATRIX model = XMMatrixRotationY(static_cast<float>(glfwGetTime()) * 0.5f) * XMMatrixRotationX(0.3f);
+    const XMMATRIX projection = XMMatrixPerspectiveFovRH(XM_PIDIV4, AspectRatio(), 0.1f, 100.0f);
+    XMStoreFloat4x4(&m_ModelViewProjection, XMMatrixTranspose(model * m_Camera.LookAt() * projection));
+  }
+
+  void OnResize() override
+  {
+    Device().GetQueue()->WaitForAll();
+
+    m_SurfaceConfig.width = Width();
+    m_SurfaceConfig.height = Height();
+    Surface().Configure(m_SurfaceConfig);
+
+    CreateDepthTexture();
+  }
+
+  void OnRender() override
+  {
+    auto queue = Device().GetQueue();
+    auto target = Surface().GetCurrentTexture();
+    auto view = target->CreateView();
+    auto encoder = queue->CreateCommandEncoder();
+
+    constexpr IssouRHI::StageAccessLayout present{
+        IssouRHI::PipelineStage::None,
+        IssouRHI::Access::None,
+        IssouRHI::TextureLayout::Present,
+    };
+    constexpr IssouRHI::StageAccessLayout attachment{
+        IssouRHI::PipelineStage::ColorAttachment,
+        IssouRHI::Access::ColorAttachmentWrite,
+        IssouRHI::TextureLayout::ColorAttachment,
+    };
+
+    {
+      std::array before{IssouRHI::TextureBarrierDesc{target.get(), present, attachment}};
+      encoder->Barrier({.textures = before});
+
+      std::array targets{
+          IssouRHI::ColorAttachment{
+              .view = view.get(),
+              .clearValue = {0.0f, 0.2f, 0.4f, 1.0f},
+          },
+      };
+      auto pass = encoder->BeginRenderPass({
+          .label = "Cube pass",
+          .colorAttachments = targets,
+          .depthStencilAttachment = {
+              .view = m_DepthTexture->CreateView().get(),
+              .depthClearValue = 1.0f,
+              .stencilLoadOp = IssouRHI::LoadOp::DontCare,
+          },
+      });
+      pass->SetPipeline(m_Pipeline.get());
+      pass->Draw(m_ModelViewProjection, 36);
+      pass->End();
+
+      std::array after{IssouRHI::TextureBarrierDesc{target.get(), attachment, present}};
+      encoder->Barrier({.textures = after});
+    }
+
+    IssouRHI::CommandBuffer* commands[] = {encoder->Finish()};
+    queue->Submit(commands);
+
+    Surface().Present();
+  }
+
+  IssouRHI::SurfaceConfiguration m_SurfaceConfig{
+      .format = IssouRHI::TextureFormat::RGBA8Unorm,
+      .width = 800,
+      .height = 600,
+      .bufferCount = 3,
+  };
+  std::shared_ptr<IssouRHI::RenderPipeline> m_Pipeline;
+  std::shared_ptr<IssouRHI::Texture> m_DepthTexture;
+  Camera m_Camera;
+  DirectX::XMFLOAT4X4 m_ModelViewProjection{};
+};
+
+int main()
+{
+  HelloCube cube;
+  return cube.Run();
 }

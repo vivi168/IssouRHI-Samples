@@ -1,2 +1,2 @@
-add_executable(HelloCube HelloCube.cpp Camera.cpp)
-target_link_libraries(HelloCube PRIVATE common DirectXMath glfw IssouRHI)
+add_executable(HelloCube HelloCube.cpp)
+target_link_libraries(HelloCube PRIVATE SampleApp glfw)
