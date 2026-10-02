@@ -34,7 +34,8 @@ public:
 private:
   static constexpr uint32_t FrameCount = 3;
 
-  enum PipelineMode {
+  enum PipelineSelection {
+    None = -1,
     Vertex,
     Mesh,
     Task,
@@ -44,7 +45,7 @@ private:
 
   struct FrameResources {
     std::shared_ptr<IssouRHI::Buffer> timestampReadback;
-    int pipeline = -1;
+    int pipelineSelection = None;
   };
 
   void OnInit() override
@@ -135,21 +136,21 @@ private:
       ImGui::TextUnformatted("Pipeline");
 
       for (int pipeline = Vertex; pipeline <= Task; ++pipeline) {
-        ImGui::RadioButton(PipelineNames[pipeline], &m_Pipeline, pipeline);
+        ImGui::RadioButton(PipelineNames[pipeline], &m_PipelineSelection, pipeline);
       }
 
       ImGui::Separator();
       ImGui::TextUnformatted("GPU timestamp query (terrain pass)");
 
-      if (frameResources.pipeline >= 0) {
+      if (frameResources.pipelineSelection == None) {
+        ImGui::TextUnformatted("Waiting for GPU results...");
+      } else {
         std::array<uint64_t, 2> timestamps{};
         frameResources.timestampReadback->Read(IssouRHI::FullBufferRange, timestamps.data());
         const uint64_t ticks = timestamps[1] - timestamps[0];
         const double milliseconds = static_cast<double>(ticks) / static_cast<double>(Device().TimestampFrequencyHz()) * 1000.0;
-        ImGui::Text("Measured pipeline: %s", PipelineNames[frameResources.pipeline]);
+        ImGui::Text("Measured pipeline: %s", PipelineNames[frameResources.pipelineSelection]);
         ImGui::Text("GPU time: %.4f ms", milliseconds);
-      } else {
-        ImGui::TextUnformatted("Waiting for GPU results...");
       }
 
       ImGui::Text("Frame rate: %.1f FPS", ImGui::GetIO().Framerate);
@@ -304,19 +305,19 @@ private:
               .querySet = m_TimestampQueries.get(),
           },
       });
-      if (m_Pipeline != Vertex) {
-        if (m_Pipeline == Task) {
-          pass->SetPipeline(m_AmpPipeline.get());
-          constexpr uint32_t groupCount = (TerrainMeshPatchCount + TerrainTaskGroupSize - 1) / TerrainTaskGroupSize;
-          pass->DrawMesh(m_DrawArgs, groupCount);
-        } else {
-          pass->SetPipeline(m_MeshPipeline.get());
-          pass->DrawMesh(m_DrawArgs, TerrainMeshPatchCountX, TerrainMeshPatchCountZ, TerrainMeshLODLevels);
-        }
-      } else {
+
+      if (m_PipelineSelection == Vertex) {
         pass->SetPipeline(m_VertexPipeline.get());
         pass->Draw(m_DrawArgs, m_IndexCount);
+      } else if (m_PipelineSelection == Mesh) {
+        pass->SetPipeline(m_MeshPipeline.get());
+        pass->DrawMesh(m_DrawArgs, TerrainMeshPatchCountX, TerrainMeshPatchCountZ, TerrainMeshLODLevels);
+      } else if (m_PipelineSelection == Task) {
+        pass->SetPipeline(m_AmpPipeline.get());
+        constexpr uint32_t groupCount = (TerrainMeshPatchCount + TerrainTaskGroupSize - 1) / TerrainTaskGroupSize;
+        pass->DrawMesh(m_DrawArgs, groupCount);
       }
+
       pass->End();
 
       encoder->ResolveQuerySet(m_TimestampQueries.get(), 0, 2, frameResources.timestampReadback.get(), 0);
@@ -330,7 +331,7 @@ private:
     IssouRHI::CommandBuffer* commands[] = {encoder->Finish()};
     queue->Submit(commands);
 
-    frameResources.pipeline = m_Pipeline;
+    frameResources.pipelineSelection = m_PipelineSelection;
     Surface().Present();
   }
 
@@ -346,7 +347,7 @@ private:
 
   std::shared_ptr<IssouRHI::QuerySet> m_TimestampQueries;
   std::array<FrameResources, FrameCount> m_FrameResources;
-  int m_Pipeline = Task;
+  int m_PipelineSelection = Task;
   uint32_t m_IndexCount = 0;
   TerrainDrawArgs m_DrawArgs{};
 
