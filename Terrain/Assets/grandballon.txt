@@ -1,0 +1,4 @@
+filename: grandballon.r16
+metersPerTexel: 3.1979
+minElevation: 285.453
+maxElevation: 1411.336

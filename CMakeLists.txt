@@ -34,3 +34,4 @@ target_link_libraries(SampleApp PUBLIC common IssouRHI DirectXMath imgui PRIVATE
 
 add_subdirectory(HelloTriangle)
 add_subdirectory(HelloCube)
+add_subdirectory(Terrain)
