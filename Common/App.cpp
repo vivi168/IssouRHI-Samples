@@ -1,7 +1,14 @@
 #include "App.h"
 
+#include <InteropD3D12.h>
+
+#include <imgui.h>
+#include <imgui_impl_dx12.h>
+#include <imgui_impl_glfw.h>
+
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <stdexcept>
 #include <utility>
 
@@ -14,6 +21,17 @@ App::App(std::string title, int width, int height) : m_Title(std::move(title)), 
 
 App::~App()
 {
+  if (m_ImGuiContext) {
+    m_Device->GetQueue()->WaitForAll();
+    if (ImGui::GetIO().BackendRendererUserData) {
+      ImGui_ImplDX12_Shutdown();
+    }
+    if (ImGui::GetIO().BackendPlatformUserData) {
+      ImGui_ImplGlfw_Shutdown();
+    }
+    ImGui::DestroyContext(m_ImGuiContext);
+  }
+
   m_Surface.reset();
   m_Device.reset();
 
@@ -83,8 +101,16 @@ int App::Run()
       OnResize();
     }
 
-    OnUpdate(dt);
-    OnRender();
+    auto target = m_Surface->GetCurrentTexture();
+
+    if (m_ImGuiContext) {
+      ImGui_ImplDX12_NewFrame();
+      ImGui_ImplGlfw_NewFrame();
+      ImGui::NewFrame();
+    }
+
+    OnUpdate(dt, m_Surface->CurrentFrameIndex());
+    OnRender(target);
   }
 
   if (m_Device) {
@@ -92,6 +118,52 @@ int App::Run()
   }
 
   return 0;
+}
+
+void App::InitImGui(const IssouRHI::SurfaceConfiguration& config)
+{
+  IMGUI_CHECKVERSION();
+  {
+    m_ImGuiContext = ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    auto init = ImGui_ImplGlfw_InitForOther(m_Window, true);
+    assert(init);
+  }
+
+  {
+    ImGui_ImplDX12_InitInfo info{};
+    info.Device = IssouRHI::D3D12::GetNativeDevice(m_Device.get());
+    info.CommandQueue = IssouRHI::D3D12::GetNativeQueue(m_Device->GetQueue());
+    info.NumFramesInFlight = static_cast<int>(config.bufferCount);
+    info.RTVFormat = IssouRHI::D3D12::GetSwapChainFormat(m_Surface.get());
+    info.DSVFormat = DXGI_FORMAT_UNKNOWN;
+    info.UserData = m_Device.get();
+    info.SrvDescriptorHeap = IssouRHI::D3D12::CbvSrvUavDescriptorHeap(m_Device.get());
+    info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* init, D3D12_CPU_DESCRIPTOR_HANDLE* cpu, D3D12_GPU_DESCRIPTOR_HANDLE* gpu) {
+      IssouRHI::D3D12::AllocCbvSrvUavDescriptor(static_cast<IssouRHI::Device*>(init->UserData), cpu, gpu);
+    };
+    info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* init, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
+      IssouRHI::D3D12::FreeCbvSrvUavDescriptor(static_cast<IssouRHI::Device*>(init->UserData), cpu, gpu);
+    };
+
+    auto init = ImGui_ImplDX12_Init(&info);
+    assert(init);
+  }
+}
+
+void App::RenderImGui(IssouRHI::CommandEncoder& encoder, IssouRHI::Texture* target)
+{
+  ImGui::Render();
+
+  auto view = target->CreateView();
+  auto rtv = IssouRHI::D3D12::RtvDescriptorHandle(view.get());
+
+  auto commandList = IssouRHI::D3D12::GetNativeCommandList(&encoder);
+  commandList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
+
+  ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 }
 
 void* App::NativeWindow() const

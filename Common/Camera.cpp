@@ -11,6 +11,15 @@ static constexpr float lower = -XM_PIDIV2 + epsilon;
 
 const XMVECTOR Camera::worldUp = XMVectorSet(0.f, 1.f, 0.f, 0.f);
 
+XMFLOAT3 WorldPosition::RelativeTo(const WorldPosition& origin) const
+{
+  return {
+      static_cast<float>(x - origin.x),
+      static_cast<float>(y - origin.y),
+      static_cast<float>(z - origin.z),
+  };
+}
+
 Camera::Camera()
 {
   m_Yaw = XM_PI;
@@ -23,20 +32,19 @@ XMMATRIX Camera::LookAt()
 {
   const float r = cosf(m_Pitch);
   XMVECTOR front = XMVector3Normalize(XMVectorSet(sinf(m_Yaw) * r, sinf(m_Pitch), cosf(m_Yaw) * r, 0.f));
-  XMVECTOR position = XMLoadFloat3(&m_Translate);
-
-  return XMMatrixLookToRH(position, front, worldUp);
+  return XMMatrixLookToRH(XMVectorZero(), front, worldUp);
 }
 
-XMFLOAT3 Camera::WorldPos() const { return m_Translate; }
+WorldPosition Camera::WorldPos() const { return m_Translate; }
 
-void Camera::Translate(float x, float y, float z) { m_Translate = {x, y, z}; }
+XMFLOAT3 Camera::WorldToLocal(const WorldPosition& position) const { return position.RelativeTo(m_Translate); }
 
-void Camera::Target(float x, float y, float z)
+void Camera::Translate(double x, double y, double z) { m_Translate = {x, y, z}; }
+
+void Camera::Target(double x, double y, double z)
 {
-  XMVECTOR p = XMLoadFloat3(&m_Translate);
-  XMVECTOR t = XMVectorSet(x, y, z, 0.0f);
-  XMVECTOR d = XMVector3Normalize(t - p);
+  const auto relative = WorldToLocal({x, y, z});
+  XMVECTOR d = XMVector3Normalize(XMLoadFloat3(&relative));
   XMFLOAT3 dir;
   XMStoreFloat3(&dir, d);
 
@@ -44,10 +52,9 @@ void Camera::Target(float x, float y, float z)
   m_Pitch = asinf(dir.y);
 }
 
-void Camera::Follow(XMFLOAT3 position, XMFLOAT3 offset)
+void Camera::Follow(WorldPosition position, XMFLOAT3 offset)
 {
-  XMVECTOR newPosition = XMLoadFloat3(&position) + XMLoadFloat3(&offset);
-  XMStoreFloat3(&m_Translate, newPosition);
+  m_Translate = {position.x + offset.x, position.y + offset.y, position.z + offset.z};
 }
 
 void Camera::Orient(float pitch, float yaw)

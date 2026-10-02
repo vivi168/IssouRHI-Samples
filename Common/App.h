@@ -7,6 +7,7 @@
 #include <string>
 
 struct GLFWwindow;
+struct ImGuiContext;
 
 class App
 {
@@ -18,12 +19,15 @@ public:
 
 protected:
   virtual void OnInit() = 0;
-  virtual void OnUpdate(float /*dt*/) {}
-  virtual void OnRender() = 0;
+  virtual void OnUpdate(float /*dt*/, uint32_t /*frameIndex*/) {}
+  virtual void OnRender(IssouRHI::Texture* target) = 0;
   virtual void OnResize() = 0;
 
   IssouRHI::Device& Device() const { return *m_Device; }
   IssouRHI::Surface& Surface() const { return *m_Surface; }
+
+  void InitImGui(const IssouRHI::SurfaceConfiguration& config);
+  void RenderImGui(IssouRHI::CommandEncoder& encoder, IssouRHI::Texture* target);
 
   void* NativeWindow() const;
   GLFWwindow* Window() const { return m_Window; }
@@ -48,4 +52,5 @@ private:
   GLFWwindow* m_Window = nullptr;
   std::unique_ptr<IssouRHI::Device> m_Device;
   std::shared_ptr<IssouRHI::Surface> m_Surface;
+  ImGuiContext* m_ImGuiContext = nullptr;
 };

@@ -7,3 +7,6 @@
 [submodule "third_party/directxmath"]
 	path = third_party/directxmath
 	url = https://github.com/microsoft/directxmath
+[submodule "third_party/imgui"]
+	path = third_party/imgui
+	url = https://github.com/ocornut/imgui

@@ -63,7 +63,7 @@ private:
     });
   }
 
-  void OnUpdate(float dt) override
+  void OnUpdate(float dt, uint32_t /*frameIndex*/) override
   {
     {
       const auto pressed = [this](int key) {
@@ -81,7 +81,8 @@ private:
       m_Camera.RotateAndMove(pitch * turnStep, yaw * turnStep, right * moveStep, up * moveStep, forward * moveStep);
     }
 
-    const XMMATRIX model = XMMatrixRotationY(static_cast<float>(glfwGetTime()) * 0.5f) * XMMatrixRotationX(0.3f);
+    const auto relative = m_Camera.WorldToLocal(m_WorldPosition);
+    const XMMATRIX model = XMMatrixRotationY(static_cast<float>(glfwGetTime()) * 0.5f) * XMMatrixRotationX(0.3f) * XMMatrixTranslation(relative.x, relative.y, relative.z);
     const XMMATRIX projection = XMMatrixPerspectiveFovRH(XM_PIDIV4, AspectRatio(), 0.1f, 100.0f);
     XMStoreFloat4x4(&m_ModelViewProjection, XMMatrixTranspose(model * m_Camera.LookAt() * projection));
   }
@@ -97,10 +98,9 @@ private:
     CreateDepthTexture();
   }
 
-  void OnRender() override
+  void OnRender(IssouRHI::Texture* target) override
   {
     auto queue = Device().GetQueue();
-    auto target = Surface().GetCurrentTexture();
     auto view = target->CreateView();
     auto encoder = queue->CreateCommandEncoder();
 
@@ -116,7 +116,7 @@ private:
     };
 
     {
-      std::array before{IssouRHI::TextureBarrierDesc{target.get(), present, attachment}};
+      std::array before{IssouRHI::TextureBarrierDesc{target, present, attachment}};
       encoder->Barrier({.textures = before});
 
       std::array targets{
@@ -138,7 +138,7 @@ private:
       pass->Draw(m_ModelViewProjection, 36);
       pass->End();
 
-      std::array after{IssouRHI::TextureBarrierDesc{target.get(), attachment, present}};
+      std::array after{IssouRHI::TextureBarrierDesc{target, attachment, present}};
       encoder->Barrier({.textures = after});
     }
 
@@ -157,6 +157,7 @@ private:
   std::shared_ptr<IssouRHI::RenderPipeline> m_Pipeline;
   std::shared_ptr<IssouRHI::Texture> m_DepthTexture;
   Camera m_Camera;
+  WorldPosition m_WorldPosition{};
   DirectX::XMFLOAT4X4 m_ModelViewProjection{};
 };
 

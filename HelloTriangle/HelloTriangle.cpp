@@ -1,6 +1,7 @@
 #include "App.h"
 #include "Helper.h"
 
+#include <algorithm>
 #include <array>
 
 class HelloTriangle final : public App
@@ -40,10 +41,9 @@ private:
     Surface().Configure(m_Config);
   }
 
-  void OnRender() override
+  void OnRender(IssouRHI::Texture* target) override
   {
     auto queue = Device().GetQueue();
-    auto target = Surface().GetCurrentTexture();
     auto view = target->CreateView();
     auto encoder = queue->CreateCommandEncoder();
 
@@ -57,7 +57,7 @@ private:
         IssouRHI::Access::ColorAttachmentWrite,
         IssouRHI::TextureLayout::ColorAttachment,
     };
-    std::array before{IssouRHI::TextureBarrierDesc{target.get(), present, attachment}};
+    std::array before{IssouRHI::TextureBarrierDesc{target, present, attachment}};
     encoder->Barrier({.textures = before});
 
     std::array targets{
@@ -81,7 +81,7 @@ private:
     pass->Draw(scale, 3);
     pass->End();
 
-    std::array after{IssouRHI::TextureBarrierDesc{target.get(), attachment, present}};
+    std::array after{IssouRHI::TextureBarrierDesc{target, attachment, present}};
     encoder->Barrier({.textures = after});
     IssouRHI::CommandBuffer* commands[] = {encoder->Finish()};
     queue->Submit(commands);
