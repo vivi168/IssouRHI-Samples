@@ -223,7 +223,7 @@ private:
 
       pipelineDesc.label = "Terrain task+mesh pipeline";
       pipelineDesc.shaders = shaderModules;
-      m_AmpPipeline = Device().CreateMeshPipeline(pipelineDesc);
+      m_TaskPipeline = Device().CreateMeshPipeline(pipelineDesc);
     }
   }
 
@@ -313,7 +313,7 @@ private:
         pass->SetPipeline(m_MeshPipeline.get());
         pass->DrawMesh(m_DrawArgs, TerrainMeshPatchCountX, TerrainMeshPatchCountZ, TerrainMeshLODLevels);
       } else if (m_PipelineSelection == Task) {
-        pass->SetPipeline(m_AmpPipeline.get());
+        pass->SetPipeline(m_TaskPipeline.get());
         constexpr uint32_t groupCount = (TerrainMeshPatchCount + TerrainTaskGroupSize - 1) / TerrainTaskGroupSize;
         pass->DrawMesh(m_DrawArgs, groupCount);
       }
@@ -339,7 +339,7 @@ private:
 
   std::shared_ptr<IssouRHI::RenderPipeline> m_VertexPipeline;
   std::shared_ptr<IssouRHI::RenderPipeline> m_MeshPipeline;
-  std::shared_ptr<IssouRHI::RenderPipeline> m_AmpPipeline;
+  std::shared_ptr<IssouRHI::RenderPipeline> m_TaskPipeline;
   std::shared_ptr<IssouRHI::Sampler> m_LinearClampSampler;
   std::shared_ptr<IssouRHI::Texture> m_DepthTexture;
   std::shared_ptr<IssouRHI::Buffer> m_VertexBuffer;
