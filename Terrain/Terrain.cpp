@@ -252,15 +252,13 @@ private:
       const float up = pressed(GLFW_KEY_E) - pressed(GLFW_KEY_Q);
       const float forward = pressed(GLFW_KEY_W) - pressed(GLFW_KEY_S);
 
-      m_Camera.Rotate(pitch * turnStep, yaw * turnStep);
-      m_Camera.Move(right * moveStep, up * moveStep, forward * moveStep);
+      m_Camera.RotateAndMove(pitch * turnStep, yaw * turnStep, right * moveStep, up * moveStep, forward * moveStep);
     }
 
     const auto relative = m_Camera.WorldToLocal(m_WorldPosition);
     m_DrawArgs.terrainOrigin = {relative.x, relative.y, relative.z, 0.0f};
-    const float aspect = static_cast<float>(m_SurfaceConfig.width) / static_cast<float>(m_SurfaceConfig.height);
     // reversed Z: near maps to 1, far to 0
-    const XMMATRIX projection = XMMatrixPerspectiveFovRH(XM_PIDIV4, aspect, m_WorldExtent * 3.0f, 0.1f);
+    const XMMATRIX projection = XMMatrixPerspectiveFovRH(XM_PIDIV4, AspectRatio(), m_WorldExtent * 3.0f, 0.1f);
     XMStoreFloat4x4(&m_DrawArgs.viewProjection, XMMatrixTranspose(m_Camera.LookAt() * projection));
   }
 
