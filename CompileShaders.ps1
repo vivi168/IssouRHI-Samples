@@ -30,8 +30,5 @@ foreach ($shader in Get-ChildItem -LiteralPath $shaderDirectory -Filter *.hlsl) 
     foreach ($stage in $stages) {
         $outputPath = Join-Path $outputDirectory ($shader.BaseName + $(if ($stage.Suffix) { "." + $stage.Suffix }) + ".cso")
         & dxc /nologo /T $stage.Profile /E $stage.Entry /Fo $outputPath /Zi /Qembed_debug $shader.FullName
-        if ($LASTEXITCODE -ne 0) {
-            throw "Shader compilation failed: $($shader.Name) ($($stage.Entry))"
-        }
     }
 }

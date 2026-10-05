@@ -27,7 +27,7 @@ protected:
   IssouRHI::Surface& Surface() const { return *m_Surface; }
 
   void InitImGui(const IssouRHI::SurfaceConfiguration& config);
-  void RenderImGui(IssouRHI::CommandEncoder& encoder, IssouRHI::Texture* target);
+  void RenderImGui(IssouRHI::CommandEncoder* encoder, IssouRHI::Texture* target);
 
   void* NativeWindow() const;
   GLFWwindow* Window() const { return m_Window; }

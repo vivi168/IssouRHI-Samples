@@ -35,32 +35,22 @@ App::~App()
   m_Surface.reset();
   m_Device.reset();
 
-  if (m_Window) {
-    glfwDestroyWindow(m_Window);
-  }
+  glfwDestroyWindow(m_Window);
 
-  if (m_GlfwInitialized) {
-    glfwTerminate();
-  }
+  glfwTerminate();
 }
 
 void App::Init()
 {
   glfwSetErrorCallback(ErrorCallback);
 
-  if (!glfwInit()) {
-    throw std::runtime_error("Failed to initialize GLFW");
-  }
-
-  m_GlfwInitialized = true;
+  m_GlfwInitialized = glfwInit();
+  assert(m_GlfwInitialized);
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
   m_Window = glfwCreateWindow(m_Width, m_Height, m_Title.c_str(), nullptr, nullptr);
-
-  if (!m_Window) {
-    throw std::runtime_error("Failed to create GLFW window");
-  }
+  assert(m_Window);
 
   glfwSetWindowUserPointer(m_Window, this);
   glfwSetKeyCallback(m_Window, KeyCallback);
@@ -123,6 +113,7 @@ int App::Run()
 void App::InitImGui(const IssouRHI::SurfaceConfiguration& config)
 {
   IMGUI_CHECKVERSION();
+
   {
     m_ImGuiContext = ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -153,14 +144,14 @@ void App::InitImGui(const IssouRHI::SurfaceConfiguration& config)
   }
 }
 
-void App::RenderImGui(IssouRHI::CommandEncoder& encoder, IssouRHI::Texture* target)
+void App::RenderImGui(IssouRHI::CommandEncoder* encoder, IssouRHI::Texture* target)
 {
   ImGui::Render();
 
   auto view = target->CreateView();
   auto rtv = IssouRHI::D3D12::RtvDescriptorHandle(view.get());
 
-  auto commandList = IssouRHI::D3D12::GetNativeCommandList(&encoder);
+  auto commandList = IssouRHI::D3D12::GetNativeCommandList(encoder);
   commandList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
 
   ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);

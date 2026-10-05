@@ -62,9 +62,7 @@ void Heightfield::Init(Device& device, const TerrainInformation& information)
   const auto path = std::filesystem::path(TERRAIN_ASSET_DIRECTORY) / information.imageName;
   auto bytes = ReadData(path);
   constexpr uint64_t rowPitch = uint64_t(TerrainHeightfieldSize) * sizeof(uint16_t);
-  if (bytes.size() != rowPitch * TerrainHeightfieldSize) {
-    throw std::runtime_error("Heightmap must contain 4096 x 4096 R16Unorm samples: " + path.string());
-  }
+  assert(bytes.size() == rowPitch * TerrainHeightfieldSize); // expect 4096x4096 R16Unorm
 
   m_InformationBuffer = device.CreateBuffer({
       .label = "Terrain information",

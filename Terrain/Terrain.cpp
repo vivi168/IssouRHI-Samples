@@ -322,7 +322,7 @@ private:
 
       encoder->ResolveQuerySet(m_TimestampQueries.get(), 0, 2, frameResources.timestampReadback.get(), 0);
 
-      RenderImGui(*encoder, target);
+      RenderImGui(encoder.get(), target);
 
       std::array after{IssouRHI::TextureBarrierDesc{target, AttachmentState, PresentState}};
       encoder->Barrier({.textures = after});
