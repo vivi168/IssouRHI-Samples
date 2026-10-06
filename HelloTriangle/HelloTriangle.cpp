@@ -18,12 +18,12 @@ private:
 
     const std::filesystem::path shaders = SAMPLE_SHADER_DIRECTORY;
     auto vertexData = ReadData(shaders / "HelloTriangle.vs.cso");
-    auto pixelData = ReadData(shaders / "HelloTriangle.ps.cso");
+    auto pixelData = ReadData(shaders / "Hello.ps.cso");
     auto vertexShader = Device().CreateShaderLibrary(vertexData);
     auto pixelShader = Device().CreateShaderLibrary(pixelData);
     IssouRHI::ShaderModule modules[] = {
-        {.library = vertexShader.get(), .stage = IssouRHI::ShaderStage::Vertex, .entryPointName = "VSMain"},
-        {.library = pixelShader.get(), .stage = IssouRHI::ShaderStage::Fragment, .entryPointName = "PSMain"},
+        {.library = vertexShader.get(), .stage = IssouRHI::ShaderStage::Vertex, .entryPointName = "main"},
+        {.library = pixelShader.get(), .stage = IssouRHI::ShaderStage::Fragment, .entryPointName = "main"},
     };
     IssouRHI::ColorTargetState targets[] = {{.format = m_Config.format}};
     m_Pipeline = Device().CreateRenderPipeline({

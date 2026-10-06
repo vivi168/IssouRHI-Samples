@@ -4,7 +4,7 @@ ConstantBuffer<TerrainMipArgs> args : register(b0);
 
 // Adapted from Morgan McGuire, https://casual-effects.blogspot.com/2014/04/fast-terrain-rendering-with-continuous.html
 [numthreads(8, 8, 1)]
-void CSMain(uint3 id : SV_DispatchThreadID)
+void main(uint3 id : SV_DispatchThreadID)
 {
   if (id.x >= args.width || id.y >= args.height) {
     return;

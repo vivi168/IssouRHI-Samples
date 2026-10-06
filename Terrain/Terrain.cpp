@@ -163,7 +163,7 @@ private:
     const std::filesystem::path shaders = SAMPLE_SHADER_DIRECTORY;
     auto pixelBlob = ReadData(shaders / "Terrain.ps.cso");
     auto pixelShader = Device().CreateShaderLibrary(pixelBlob);
-    const IssouRHI::ShaderModule pixelModule{.library = pixelShader.get(), .stage = IssouRHI::ShaderStage::Fragment, .entryPointName = "PSMain"};
+    const IssouRHI::ShaderModule pixelModule{.library = pixelShader.get(), .stage = IssouRHI::ShaderStage::Fragment, .entryPointName = "main"};
 
     IssouRHI::ColorTargetState targets[] = {{.format = m_SurfaceConfig.format}};
 
@@ -185,7 +185,7 @@ private:
       auto vertexShader = Device().CreateShaderLibrary(vertexBlob);
 
       IssouRHI::ShaderModule shaderModules[] = {
-          {.library = vertexShader.get(), .stage = IssouRHI::ShaderStage::Vertex, .entryPointName = "VSMain"},
+          {.library = vertexShader.get(), .stage = IssouRHI::ShaderStage::Vertex, .entryPointName = "main"},
           pixelModule,
       };
 
@@ -199,7 +199,7 @@ private:
       auto meshShader = Device().CreateShaderLibrary(meshBlob);
 
       IssouRHI::ShaderModule shaderModules[] = {
-          {.library = meshShader.get(), .stage = IssouRHI::ShaderStage::Mesh, .entryPointName = "MSMain"},
+          {.library = meshShader.get(), .stage = IssouRHI::ShaderStage::Mesh, .entryPointName = "main"},
           pixelModule,
       };
 
@@ -216,8 +216,8 @@ private:
       auto taskShader = Device().CreateShaderLibrary(taskBlob);
 
       IssouRHI::ShaderModule shaderModules[] = {
-          {.library = taskShader.get(), .stage = IssouRHI::ShaderStage::Task, .entryPointName = "ASMain"},
-          {.library = meshShader.get(), .stage = IssouRHI::ShaderStage::Mesh, .entryPointName = "MSMain"},
+          {.library = taskShader.get(), .stage = IssouRHI::ShaderStage::Task, .entryPointName = "main"},
+          {.library = meshShader.get(), .stage = IssouRHI::ShaderStage::Mesh, .entryPointName = "main"},
           pixelModule,
       };
 

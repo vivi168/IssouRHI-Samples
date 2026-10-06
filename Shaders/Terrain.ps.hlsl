@@ -1,13 +1,6 @@
 #include "TerrainCommon.hlsli"
 
-VertexOut VSMain(uint id : SV_VertexID)
-{
-  StructuredBuffer<float3> vertices = ResourceDescriptorHeap[args.verticesId];
-  StructuredBuffer<uint> indices = ResourceDescriptorHeap[args.indicesId];
-  return EvaluateTerrainVertex(vertices[indices[id]]);
-}
-
-float4 PSMain(VertexOut input) : SV_Target0
+float4 main(VertexOut input) : SV_Target0
 {
   SamplerState linearClampSampler = SamplerDescriptorHeap[args.samplerId];
   StructuredBuffer<TerrainMeasurements> information = ResourceDescriptorHeap[args.terrainInformationId];

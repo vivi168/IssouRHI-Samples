@@ -57,7 +57,7 @@ bool IsTerrainPatchVisible(uint patchId)
 }
 
 [numthreads(TerrainTaskGroupSize, 1, 1)]
-void ASMain(uint3 group : SV_GroupID, uint lane : SV_GroupIndex)
+void main(uint3 group : SV_GroupID, uint lane : SV_GroupIndex)
 {
   if (lane == 0) {
     visiblePatchCount = 0;

@@ -12,13 +12,13 @@ groupshared uint cellTriangleCounts[PatchCells];
 
 [outputtopology("triangle")]
 [numthreads(MeshGroupSize, 1, 1)]
-void MSMain(uint3 group : SV_GroupID,
-            uint lane : SV_GroupIndex,
+void main(uint3 group : SV_GroupID,
+          uint lane : SV_GroupIndex,
 #ifdef TERRAIN_USE_TASK_SHADER
-            in payload TerrainPatchPayload payload,
+          in payload TerrainPatchPayload payload,
 #endif
-            out vertices VertexOut vertices[PatchVertexCount],
-            out indices uint3 triangles[PatchTriangleCount])
+          out vertices VertexOut vertices[PatchVertexCount],
+          out indices uint3 triangles[PatchTriangleCount])
 {
 #ifdef TERRAIN_USE_TASK_SHADER
   group = DecodeTerrainPatch(payload.patchIds[group.x]);

@@ -51,7 +51,7 @@ static std::shared_ptr<IssouRHI::ComputePipeline> CreateComputePipeline(IssouRHI
   auto library = device.CreateShaderLibrary(bytes);
   return device.CreateComputePipeline({
       .label = path.stem().string(),
-      .shader = {.library = library.get(), .stage = IssouRHI::ShaderStage::Compute, .entryPointName = "CSMain"},
+      .shader = {.library = library.get(), .stage = IssouRHI::ShaderStage::Compute, .entryPointName = "main"},
   });
 }
 
