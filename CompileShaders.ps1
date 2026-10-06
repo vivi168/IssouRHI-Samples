@@ -2,7 +2,6 @@ param(
     [string]$BuildDirectory = (Join-Path $PSScriptRoot "build")
 )
 
-$ErrorActionPreference = "Stop"
 $shaderDirectory = Join-Path $PSScriptRoot "Shaders"
 $outputDirectory = Join-Path $BuildDirectory "Shaders"
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
